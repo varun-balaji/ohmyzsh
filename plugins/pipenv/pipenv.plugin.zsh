@@ -16,11 +16,12 @@ if zstyle -T ':omz:plugins:pipenv' auto-shell; then
   # Automatic pipenv shell activation/deactivation
   _togglePipenvShell() {
     # deactivate shell if Pipfile doesn't exist and not in a subdir
-    if [[ ! -f "$PWD/Pipfile" ]]; then
-      if [[ "$PIPENV_ACTIVE" == 1 ]]; then
-        if [[ "$PWD" != "$pipfile_dir"* ]]; then
-          exit
-        fi
+    if [[ "$PIPENV_ACTIVE" == 1 ]]; then
+      if [[ "$PWD" != "$pipfile_dir"* ]]; then
+        echo "writing "$PWD "to /tmp/omz_pipenv_target_exit_dir"
+        # preserve the target dir we are switching to in a tmp file
+        echo $PWD > /tmp/omz_pipenv_target_exit_dir
+        exit
       fi
     fi
 
@@ -29,6 +30,19 @@ if zstyle -T ':omz:plugins:pipenv' auto-shell; then
       if [[ -f "$PWD/Pipfile" ]]; then
         export pipfile_dir="$PWD"
         pipenv shell
+        # echo "done with pipenv shell"
+        # only switch to the target exit dir if the tmp file exists
+        # if the user exits the pipenv shell with exit, then there won't be a
+        # tmp file so it won't cd to any dir
+        if [[ -f "/tmp/omz_pipenv_target_exit_dir" ]]; then
+          echo "reading /tmp/omz_pipenv_target_exit_dir"
+          target_dir=$(cat /tmp/omz_pipenv_target_exit_dir)
+          echo "cleaning up /tmp/omz_pipenv_target_exit_dir"
+          rm /tmp/omz_pipenv_target_exit_dir
+          echo "switching to target dir: $target_dir"
+          cd $target_dir
+          # cleanup temp file
+        fi
       fi
     fi
   }
